@@ -16,11 +16,14 @@ os.makedirs(RESULTADOS_DIR, exist_ok=True)
 sns.set_theme(style="whitegrid", palette="muted")
 
 
-def _guardar(nombre: str):
+def _guardar(nombre: str) -> str:
+    """Guarda la figura actual como PNG y devuelve la ruta.
+    NO cierra la figura para que Jupyter pueda mostrarla inline."""
     ruta = os.path.join(RESULTADOS_DIR, nombre)
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    print(f"  Gráfica guardada: {ruta}")
-    plt.close()
+    print(f"  Grafica guardada: {ruta}")
+    # No se llama plt.close() aqui para que Jupyter muestre la grafica
+    return ruta
 
 
 # ---------------------------------------------------------------------------
@@ -126,15 +129,17 @@ def grafica_clusters(datos_equipos: pd.DataFrame):
         linewidth=0.8,
     )
 
-    for _, row in datos_equipos.iterrows():
-        ax.annotate(
-            row["ip_origen"],
-            (row["pca_x"], row["pca_y"]),
-            fontsize=7,
-            alpha=0.7,
-            xytext=(4, 4),
-            textcoords="offset points",
-        )
+    # (Comentado a petición del usuario para evitar amontonamiento con miles de IPs)
+    # for _, row in datos_equipos.iterrows():
+    #     etiqueta = row.get("dispositivo_local", row["ip_origen"])
+    #     ax.annotate(
+    #         etiqueta,
+    #         (row["pca_x"], row["pca_y"]),
+    #         fontsize=7,
+    #         alpha=0.7,
+    #         xytext=(4, 4),
+    #         textcoords="offset points",
+    #     )
 
     parches = [mpatches.Patch(color=v, label=k) for k, v in paleta.items() if k in datos_equipos["nivel_uso"].values]
     ax.legend(handles=parches, title="Nivel de uso", loc="best")
@@ -181,24 +186,34 @@ def grafica_trafico_por_hora(df: pd.DataFrame):
 def grafica_confusion_knn(res_knn: dict):
     nombres = res_knn["clases_nombres"]
     cm = res_knn["confusion_matrix"]
+    accuracy = res_knn["accuracy"]
 
-    fig, ax = plt.subplots(figsize=(max(8, len(nombres)), max(6, len(nombres))))
-    sns.heatmap(
-        cm,
-        annot=True,
-        fmt="d",
-        cmap="Blues",
-        xticklabels=nombres,
-        yticklabels=nombres,
-        linewidths=0.5,
-        ax=ax,
-    )
-    ax.set_xlabel("Predicho", fontsize=11)
-    ax.set_ylabel("Real", fontsize=11)
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
-    plt.setp(ax.get_yticklabels(), rotation=0)
-    ax.set_title(f"Matriz de confusión – KNN (accuracy={res_knn['accuracy']:.2%})",
-                 fontsize=12, fontweight="bold")
+    # Calcular aciertos y fallos
+    acertados = [cm[i, i] for i in range(len(nombres))]
+    total_reales = [sum(cm[i, :]) for i in range(len(nombres))]
+    fallados = [total_reales[i] - acertados[i] for i in range(len(nombres))]
+
+    fig, ax = plt.subplots(figsize=(10, max(5, len(nombres)*0.8)))
+    y_pos = np.arange(len(nombres))
+
+    ax.barh(y_pos, acertados, color="#4CAF50", label="Acertados (Correctos)", edgecolor="white")
+    ax.barh(y_pos, fallados, left=acertados, color="#F44336", label="Fallados (Incorrectos)", edgecolor="white")
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(nombres)
+    ax.invert_yaxis()  # El primer elemento arriba
+
+    ax.set_xlabel("Número de paquetes")
+    ax.set_title(f"Rendimiento del Modelo KNN por Tipo de Servicio\n(Precisión General: {accuracy:.2%})", fontsize=12, fontweight="bold")
+    ax.legend(loc='lower right')
+
+    # Añadir texto en barras
+    for i in range(len(nombres)):
+        if acertados[i] > 0:
+            ax.text(acertados[i] / 2, i, str(acertados[i]), va='center', ha='center', color='white', fontweight='bold', fontsize=9)
+        if fallados[i] > 0:
+            ax.text(acertados[i] + (fallados[i] / 2), i, str(fallados[i]), va='center', ha='center', color='white', fontweight='bold', fontsize=9)
+
     plt.tight_layout()
     _guardar("06_confusion_knn.png")
 
@@ -247,40 +262,57 @@ def grafica_servicios(df: pd.DataFrame, top_n: int = 12):
 
 
 # ---------------------------------------------------------------------------
-# 9. Aplicaciones/servicios inferidos por IP (heurística)
+# 9. Top sitios/aplicaciones más visitados (SNI + DNS — nombres reales)
 # ---------------------------------------------------------------------------
 def grafica_apps_inferidas(df: pd.DataFrame):
     if "app_inferida" not in df.columns:
         print("  [skip] columna 'app_inferida' no disponible.")
         return
 
-    conteo = df["app_inferida"].value_counts()
+    # Filtrar entradas vacías o genéricas para mostrar solo dominios reales
+    dominios = df["app_inferida"].dropna()
+    dominios = dominios[~dominios.isin(["Otro", "Desconocido", "", "N/A"])]
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    if dominios.empty:
+        print("  [skip] No hay dominios/apps detectados en los datos.")
+        return
+
+    conteo = dominios.value_counts().head(15)
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
     fig.suptitle(
-        "Aplicaciones/Servicios inferidos por IP destino\n"
-        "(Aproximación por prefijo de IP — ChatGPT, YouTube, Facebook, etc.)",
-        fontsize=12, fontweight="bold"
+        "Top 15 sitios / aplicaciones más visitados por los estudiantes\n"
+        "(Capturado directamente desde tráfico SNI+DNS — sin inferencias)",
+        fontsize=13, fontweight="bold"
     )
 
     colores = sns.color_palette("Set3", len(conteo))
 
+    # Barras horizontales
     axes[0].barh(conteo.index[::-1], conteo.values[::-1], color=colores[::-1], edgecolor="white")
-    axes[0].set_title("Conteo de paquetes por app inferida")
+    axes[0].set_title("Número de paquetes por sitio/app")
     axes[0].set_xlabel("Número de paquetes")
+    axes[0].set_ylabel("Sitio / Aplicación")
+    for i, (val, nom) in enumerate(zip(conteo.values[::-1], conteo.index[::-1])):
+        axes[0].text(val + conteo.values.max() * 0.005, i, str(val), va="center", fontsize=8)
 
+    # Calcular total para esconder etiquetas con < 3%
+    total_paquetes = sum(conteo.values)
+    etiquetas_pastel = [nom if (val / total_paquetes * 100) >= 3.0 else "" for nom, val in zip(conteo.index, conteo.values)]
+
+    # Pastel de proporciones
     axes[1].pie(
         conteo.values,
-        labels=conteo.index,
-        autopct="%1.1f%%",
+        labels=etiquetas_pastel,
+        autopct=lambda p: f"{p:.1f}%" if p >= 3.0 else "",
         colors=colores,
         startangle=90,
         wedgeprops={"edgecolor": "white", "linewidth": 1.5},
     )
-    axes[1].set_title("Proporción por app")
+    axes[1].set_title("Proporción del tráfico por sitio/app")
 
     plt.tight_layout()
-    _guardar("09_apps_inferidas.png")
+    _guardar("09_top_sitios_visitados.png")
 
 
 # ---------------------------------------------------------------------------

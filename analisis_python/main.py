@@ -2,6 +2,11 @@
 main.py
 Ejecuta el análisis completo sin necesidad de Jupyter Notebook.
 Pasos: carga → limpieza → modelos → gráficas
+
+Detección automática de CSV:
+  - Si existe ../captura_red.csv             → lo usa.
+  - Si existen ../captura_red_YYYY-MM-DD.csv → los combina todos (1, 2 o 3 archivos).
+  - Si no hay ningún CSV                     → muestra un error claro.
 """
 
 from limpieza_datos import cargar_datos
@@ -13,9 +18,24 @@ def main():
     print("  ANÁLISIS DE TRÁFICO DE RED — NetworkMonitor")
     print("=" * 60)
 
-    # 1. Carga y limpieza
+    # 1. Carga y limpieza (detecta automáticamente los CSV disponibles)
     print("\n[1/4] Cargando y limpiando datos...")
-    df = cargar_datos(verbose=True)
+    print("      Se busca captura_red.csv o captura_red_YYYY-MM-DD.csv\n")
+    try:
+        df = cargar_datos(verbose=True)
+    except FileNotFoundError as e:
+        print(e)
+        return
+
+    # Informar de cuántos archivos se combinaron
+    if "origen_csv" in df.columns:
+        archivos = df["origen_csv"].unique()
+        print(f"\n[info] Archivos usados en el análisis ({len(archivos)}):")
+        for a in archivos:
+            n = (df["origen_csv"] == a).sum()
+            print(f"       {a}  →  {n:,} registros")
+
+    print(f"\n[info] Total de registros para análisis: {len(df):,}")
 
     # 2. Modelos
     print("\n[2/4] Ejecutando modelos de Data Science...\n")
