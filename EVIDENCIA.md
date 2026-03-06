@@ -63,23 +63,91 @@ que actúa como puente entre Java y los controladores de red del sistema operati
 
 ## 2. Ejemplo de datos capturados (CSV generado por el programa Java)
 
-El siguiente fragmento muestra las primeras filas del archivo `captura_red.csv`
+El siguiente fragmento muestra las primeras 15 filas **reales** del archivo `captura_red_2026-03-05.csv`
 exportado desde el botón **"Exportar CSV"** del programa NetworkMonitor:
 
-```
-IP Origen,IP Destino,Puerto Ori,Puerto Des,Protocolo,Longitud,Hora Captura,Equipo Local,SSID
-10.20.53.78,3.227.113.226,61930,443,TCP,55,21:31:02,DESKTOP-G6APLIR,N/A
-10.20.53.78,98.95.185.24,57223,443,TCP,93,21:31:02,DESKTOP-G6APLIR,N/A
-3.227.113.226,10.20.53.78,443,61930,TCP,66,21:31:02,DESKTOP-G6APLIR,N/A
-98.95.185.24,10.20.53.78,443,57223,TCP,93,21:31:02,DESKTOP-G6APLIR,N/A
-10.20.53.78,98.95.185.24,57223,443,TCP,54,21:31:02,DESKTOP-G6APLIR,N/A
-10.20.53.78,3.227.113.226,61930,443,TCP,55,21:31:03,DESKTOP-G6APLIR,N/A
-10.20.53.78,10.20.53.33,52400,53,UDP,105,21:31:03,DESKTOP-G6APLIR,N/A
+```csv
+IP Origen,IP Destino,MAC Origen,MAC Destino,Puerto Ori,Puerto Des,Protocolo,Longitud,Hora Captura,Dispositivo Local,Sitio/App Destino,SSID
+10.20.53.78,3.143.106.22,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,58487,443,TCP,119,2026-03-05 20:26:54,10.20.53.78,,N/A
+10.20.53.78,52.112.53.52,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,51404,443,TCP,104,2026-03-05 20:26:54,DESKTOP-G6APLIR,,N/A
+104.18.18.125,10.20.53.78,76:ac:1e:a3:16:a0,d4:d8:53:5d:25:cd,443,51001,TCP,54,2026-03-05 20:26:54,DESKTOP-G6APLIR,,N/A
+10.20.53.33,224.0.0.251,76:ac:1e:a3:16:a0,01:00:5e:00:00:fb,5353,5353,UDP,119,2026-03-05 20:26:54,10.20.53.33,,N/A
+104.18.18.125,10.20.53.78,76:ac:1e:a3:16:a0,d4:d8:53:5d:25:cd,443,51001,TCP,135,2026-03-05 20:26:54,DESKTOP-G6APLIR,,N/A
+10.20.53.78,10.20.53.33,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,55898,53,UDP,84,2026-03-05 20:26:55,DESKTOP-G6APLIR,33.53.20.10.in-addr.arpa,N/A
+10.20.53.78,224.0.0.251,d4:d8:53:5d:25:cd,01:00:5e:00:00:fb,5353,5353,UDP,84,2026-03-05 20:26:55,DESKTOP-G6APLIR,,N/A
+10.20.53.78,104.18.18.125,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,51001,443,TCP,54,2026-03-05 20:26:55,DESKTOP-G6APLIR,,N/A
+10.20.53.78,10.20.53.33,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,65224,53,UDP,94,2026-03-05 20:26:55,DESKTOP-G6APLIR,p2p-lax1.discovery.steamserver.net,N/A
+10.20.53.78,10.20.53.33,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,55898,53,UDP,84,2026-03-05 20:26:55,DESKTOP-G6APLIR,33.53.20.10.in-addr.arpa,N/A
+10.20.53.78,10.20.53.33,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,65224,53,UDP,94,2026-03-05 20:26:55,DESKTOP-G6APLIR,p2p-lax1.discovery.steamserver.net,N/A
+10.20.53.78,52.112.53.52,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,51404,443,TCP,104,2026-03-05 20:26:55,DESKTOP-G6APLIR,,N/A
+10.20.53.78,104.18.18.125,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,51001,443,TCP,810,2026-03-05 20:26:55,DESKTOP-G6APLIR,,N/A
+10.20.53.78,3.143.106.22,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,57883,443,TCP,119,2026-03-05 20:26:55,DESKTOP-G6APLIR,,N/A
+10.20.53.78,3.143.106.22,d4:d8:53:5d:25:cd,76:ac:1e:a3:16:a0,57428,443,TCP,119,2026-03-05 20:26:55,DESKTOP-G6APLIR,,N/A
 ```
 
-> El archivo CSV con los datos completos de los 3 días de captura se adjunta
+### Análisis del fragmento CSV
+
+**Observaciones:**
+- **Columnas presentes:** Incluye IP origen/destino, MAC origen/destino, puertos, protocolo, longitud, fecha+hora completa, dispositivo local, sitio/app destino (cuando es DNS), SSID
+- **Tráfico TCP dominante:** La mayoría de las filas muestran puerto 443 (HTTPS)
+- **Tráfico UDP para DNS:** Filas con puerto 53 muestran consultas DNS (ej. `p2p-lax1.discovery.steamserver.net`, resolución inversa `in-addr.arpa`)
+- **Multicast mDNS:** IP destino `224.0.0.251` es multicast DNS (puerto 5353)
+- **IPs externas frecuentes:**
+  - `3.143.106.22` → Rango de AWS (posiblemente servicios en la nube)
+  - `52.112.53.52` → Microsoft Azure (posiblemente Teams/Office365)
+  - `104.18.18.125` → Cloudflare CDN
+- **MACs capturadas:** `d4:d8:53:5d:25:cd` (equipo local), `76:ac:1e:a3:16:a0` (probablemente punto de acceso Wi-Fi)
+- **Hora de captura:** 2026-03-05 entre 20:26:54 y 20:26:55 (todos los paquetes en un intervalo de 1 segundo)
+
+> El archivo CSV completo con los datos de los 3 días de captura se adjunta
 > junto con este reporte. Los nombres de archivo siguen el formato:
 > `captura_red_YYYY-MM-DD.csv` (uno por día de monitoreo).
+
+---
+
+## 2.1 Screenshots del programa Java NetworkMonitor
+
+### Screenshot 1: Interfaz principal con captura en curso
+
+**[INSTRUCCIÓN: Insertar aquí screenshot del programa Java mostrando:]**
+- Ventana principal con título "Network Monitor - Java Swing"
+- Tabla poblada con múltiples filas de paquetes capturados
+- Columnas visibles: IP Origen, IP Destino, MAC Origen, MAC Destino, Puerto Ori, Puerto Des, Protocolo, Longitud, Hora Captura, Dispositivo Local, Sitio/App Destino, SSID
+- Panel superior con campos "Equipo local" y "SSID Wi-Fi"
+- Panel de filtros con combo "Protocolo", campos de texto para IP y Puerto
+- Botones: "Iniciar Captura", "Detener Captura", "Exportar CSV"
+- Contador visible: "Paquetes: 685 / 33333"
+
+**Descripción de la interfaz:**
+- La tabla muestra paquetes capturados en tiempo real con scroll para navegar por cientos/miles de registros.
+- Los filtros permiten al usuario mostrar solo paquetes que cumplan ciertos criterios (ej. solo TCP, solo puerto 443, solo IPs que contengan "10.20").
+- El contador indica que se han capturado 685 paquetes del límite de 33,333 configurado (para generar ~100k registros en 3 días).
+- Las columnas MAC muestran las direcciones físicas de las tarjetas de red origen y destino.
+
+### Screenshot 2: Filtros aplicados
+
+**[INSTRUCCIÓN: Insertar aquí screenshot mostrando:]**
+- Filtro "Protocolo" seleccionado en "TCP"
+- Filtro "Puerto Des" con valor "443"
+- Tabla mostrando SOLO filas que cumplan los filtros
+- Resto de filas ocultas (no eliminadas del modelo, solo no visibles)
+
+**Descripción del filtrado:**
+- Al aplicar filtros, la tabla muestra solo los paquetes que cumplen las condiciones.
+- Esto facilita el análisis de tráfico específico (ej. solo HTTPS, solo DNS, solo hacia una IP concreta).
+- El botón "Limpiar filtros" restaura la vista completa de todos los paquetes capturados.
+
+### Screenshot 3: Diálogo de exportación exitosa
+
+**[INSTRUCCIÓN: Insertar aquí screenshot del JOptionPane mostrando:]**
+- Mensaje: "CSV generado: captura_red_2026-03-05.csv"
+- Botón "OK"
+
+**Descripción de la exportación:**
+- Al pulsar "Exportar CSV", el programa genera el archivo con nombre automático que incluye la fecha del día.
+- El archivo se guarda en el directorio raíz del proyecto.
+- TODAS las filas capturadas se exportan (no solo las visibles tras filtros).
+- El CSV incluye encabezados en la primera fila para compatibilidad con herramientas de análisis.
 
 ---
 

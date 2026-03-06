@@ -42,9 +42,19 @@ def clasificar_tipo_trafico(df: pd.DataFrame, k: int = 5, test_size: float = 0.2
     X = df[["longitud_scaled", "po_scaled", "pd_scaled", "protocolo_enc"]].values
     y = df["servicio_enc"].values
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=42, stratify=y
-    )
+    # Comprobar si todas las clases tienen al menos 2 muestras para stratify
+    conteos_clase = pd.Series(y).value_counts()
+    usar_stratify = (conteos_clase >= 2).all()
+    
+    if usar_stratify:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42, stratify=y
+        )
+    else:
+        # Si hay clases con 1 solo registro, no usar stratify
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=42
+        )
 
     knn = KNeighborsClassifier(n_neighbors=k)
     knn.fit(X_train, y_train)
@@ -147,7 +157,21 @@ def clustering_equipos(df: pd.DataFrame, k: int = 3):
     print()
     print(agg.groupby("nivel_uso")[features].mean().round(2).to_string())
     print()
-    print(agg[["ip_origen", "total_paquetes", "bytes_total", "nivel_uso"]].to_string(index=False))
+
+    # Añadir nombre del dispositivo local si está disponible en el DataFrame
+    if "dispositivo_local" in df.columns:
+        mapa_nombre = (
+            df[df["dispositivo_local"].notna() & (df["dispositivo_local"] != "")]
+            .groupby("ip_origen")["dispositivo_local"]
+            .first()
+        )
+        agg["dispositivo_local"] = agg["ip_origen"].map(mapa_nombre).fillna(agg["ip_origen"])
+    else:
+        agg["dispositivo_local"] = agg["ip_origen"]
+
+    col_id = "dispositivo_local"
+    print(agg[[col_id, "total_paquetes", "bytes_total", "nivel_uso"]].to_string(index=False))
+
 
     return {
         "modelo": kmeans,

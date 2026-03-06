@@ -1,25 +1,21 @@
-3. Análisis con Data Science (Python)
-Una vez obtenidos los archivos CSV, debes aplicar las siguientes técnicas en Python:
+Te propongo este plan de acción:
 
+Mejorar clasificación de apps (más fácil, impacto visible):
 
-Clasificación (KNN): Para identificar patrones de comportamiento o tipos de tráfico.
+Analizar las IP destino más frecuentes en tu CSV
+Ampliar PREFIJOS_APP con rangos adicionales
+Regenerar gráficas
+Completar documentación con evidencias visuales:
 
+Captura del programa Java en ejecución
+Fragmento del CSV exportado
+Diagrama flujo claro
+Implementar hostname remoto (más técnico):
 
-Análisis Predictivo: Para estimar el tráfico predominante en ciertos horarios.
+Añadir función DNS inverso en Java
+Nueva columna Hostname Origen / Hostname Destino
+Revisar Jupyter notebook:
 
+Ejecutar todas las celdas con datos reales
+Guardar con salidas visibles
 
-Clustering (K-Means): Para agrupar a los equipos según su nivel de uso (intensivo, moderado, ligero).
-
-
-Detección de patrones: Identificar picos de tráfico o los puertos más utilizados.
-
-4. Visualización de Resultados
-Se solicita presentar gráficas que faciliten la interpretación de los datos, tales como:
-
-Comparativa de protocolos TCP vs UDP.
-
-Dispersión entre el tamaño de los paquetes y el tiempo.
-
-Frecuencia de uso de puertos.
-
-Clasificación de dispositivos según su comportamiento.
