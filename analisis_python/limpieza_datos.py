@@ -139,6 +139,41 @@ def inferir_app(ip: str) -> str:
     return "Otro"
 
 
+# Valores genéricos de la columna Sitio/App Destino que NO son sitios reales.
+# Cuando app_inferida tiene uno de estos valores, se prefiere la inferencia por IP.
+_GENERICO_SITIO = {
+    "HTTPS", "HTTP", "DNS", "mDNS", "NetBIOS-NS", "NetBIOS-DGM", "NetBIOS-SSN",
+    "LLMNR", "DHCP-Server", "DHCP-Client", "SMB/CIFS", "NTP", "SNMP", "SNMP-Trap",
+    "UPnP/SSDP", "SSH", "FTP", "Telnet", "RDP", "SMTP", "SMTP-SSL", "SMTP-Envio",
+    "POP3", "POP3-SSL", "IMAP", "IMAP-SSL", "HTTP-Alt", "HTTPS-Alt",
+    "WinRM-HTTP", "WinRM-HTTPS", "Syslog", "PPTP-VPN", "OpenVPN", "IKE-VPN",
+    "IPSec-VPN", "RTSP-Streaming", "RTMP-Streaming", "STUN/WebRTC", "STUN/TURN",
+    "MySQL", "PostgreSQL", "SQL-Server", "MongoDB", "Redis",
+    "Red-Local", "N/A", "Otro", "Desconocido", "",
+}
+
+
+def es_sitio_real(s) -> bool:
+    """Devuelve True solo si s es un dominio real (p.ej. youtube.com, api2.cursor.sh).
+    Descarta nombres de servicio genéricos y puertos sueltos.
+    """
+    if not isinstance(s, str):
+        return False
+    s = s.strip()
+    if not s or s in _GENERICO_SITIO:
+        return False
+    if s.startswith("Puerto ") or s.startswith("Equipo-"):
+        return False
+    # Debe tener al menos un punto (formato dominio)
+    partes = s.split(".")
+    if len(partes) < 2:
+        return False
+    # No puede ser una IP pura (todos los segmentos numéricos)
+    if all(p.isdigit() for p in partes):
+        return False
+    return True
+
+
 PUERTOS_SERVICIO = {
     20: "FTP-datos", 21: "FTP-control", 22: "SSH", 23: "Telnet",
     25: "SMTP", 53: "DNS", 67: "DHCP", 68: "DHCP",
@@ -188,21 +223,23 @@ def _limpiar_un_csv(ruta: str, verbose: bool) -> pd.DataFrame:
     # Renombrado de columnas (tolerante: solo renombra las que existan)
     df.columns = [c.strip() for c in df.columns]
     rename_map = {
-        "IP Origen":         "ip_origen",
-        "IP Destino":        "ip_destino",
-        "Puerto Ori":        "puerto_origen",
-        "Puerto Des":        "puerto_destino",
-        "Protocolo":         "protocolo",
-        "Longitud":          "longitud",
-        "Hora Captura":      "hora_captura",
-        "SSID":              "ssid",
-        # v2.0: columnas nuevas con nombres reales de dispositivos y sitios
-        "Dispositivo Local": "dispositivo_local",
-        "Sitio/App Destino": "sitio_app_destino",
+        "IP Origen":              "ip_origen",
+        "IP Destino":             "ip_destino",
+        "Puerto Ori":             "puerto_origen",
+        "Puerto Des":             "puerto_destino",
+        "Protocolo":              "protocolo",
+        "Longitud":               "longitud",
+        "Hora Captura":           "hora_captura",
+        "SSID":                   "ssid",
+        # v2.0 / v3.0: columnas con nombres reales de dispositivos y sitios
+        "Dispositivo Local":      "dispositivo_local",
+        "Nombre de Dispositivos": "dispositivo_local",   # v3.0
+        "Sitio/App Destino":      "sitio_app_destino",
+        "Hostname Remoto":        "hostname_remoto",
         # Legacy: columnas de versiones anteriores de NetworkMonitor
-        "Equipo Local":      "equipo_local",
-        "MAC Origen":        "mac_origen",
-        "MAC Destino":       "mac_destino",
+        "Equipo Local":           "equipo_local",
+        "MAC Origen":             "mac_origen",
+        "MAC Destino":            "mac_destino",
     }
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
 
@@ -336,11 +373,15 @@ def cargar_datos(ruta_csv: str = None, verbose: bool = True) -> pd.DataFrame:
     df["rango_puerto_dst"] = df["puerto_destino"].apply(categorizar_rango_puerto)
     df["rango_puerto_src"] = df["puerto_origen"].apply(categorizar_rango_puerto)
 
-    # app_inferida: si el CSV v2.0 ya trae los nombres reales (SNI/DNS), los usamos.
-    # Para filas donde el sitio está vacío, hacemos fallback a la heurística por IP.
+    # app_inferida: solo conserva el valor de sitio_app_destino si es un dominio
+    # real (ej. "youtube.com", "api2.cursor.sh"). Valores genéricos como "HTTPS",
+    # "mDNS", "NetBIOS-NS", "Puerto 443" se descartan y se usa la heurística por IP.
     if "sitio_app_destino" in df.columns:
+        # También renombrar columna nueva "Nombre de Dispositivos" si viene del CSV v3
+        if "Nombre de Dispositivos" in df.columns and "dispositivo_local" not in df.columns:
+            df = df.rename(columns={"Nombre de Dispositivos": "dispositivo_local"})
         df["app_inferida"] = df["sitio_app_destino"].apply(
-            lambda s: s if (isinstance(s, str) and s.strip() not in ("", "N/A")) else None
+            lambda s: s.strip() if es_sitio_real(s) else None
         ).fillna(df["ip_destino"].apply(inferir_app))
     else:
         # CSV antiguo sin columna SNI: usamos la heurística de prefijo de IP
